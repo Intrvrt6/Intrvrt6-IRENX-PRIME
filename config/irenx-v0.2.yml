@@ -1,0 +1,48 @@
+version: 0.2
+status: controlled-paper-first
+symbol: XAUUSD
+execution_timeframe: M15
+min_rr: 3.0
+risk_percent: 1.0
+
+pipeline:
+  - REGIME
+  - LIQUIDITY
+  - REFLEXIVITY
+  - OROCHI
+  - VMAP
+  - SIGNAL
+  - RISK
+  - EXECUTION
+
+rules:
+  no_trade_is_valid: true
+  single_indicator_trigger: false
+  vmap_independent_trigger: false
+  risk_veto: true
+  duplicate_position_block: true
+  spread_filter: true
+  session_filter: true
+  news_filter: true
+  max_daily_loss_guard: true
+  kill_switch: true
+
+execution_modes:
+  analysis: true
+  paper: true
+  live: false
+
+promotion_gate:
+  require_backtest: true
+  require_walk_forward: true
+  require_paper_validation: true
+  require_risk_validation: true
+  require_manual_live_approval: true
+
+fail_safe:
+  missing_market_data: NO_TRADE
+  stale_market_data: NO_TRADE
+  invalid_signal: NO_TRADE
+  risk_failure: NO_TRADE
+  execution_failure: BLOCK
+  health_failure: BLOCK
