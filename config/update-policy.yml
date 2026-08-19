@@ -1,0 +1,38 @@
+version: 1
+mode: controlled-auto-update
+
+schedule:
+  dependency_scan: weekly
+
+allowed_auto_updates:
+  - security_patches
+  - dependency_patches
+  - documentation
+  - tests
+  - non_execution_analysis_modules
+
+manual_validation_required:
+  - execution
+  - risk_management
+  - position_sizing
+  - stop_loss
+  - take_profit
+  - leverage
+  - exposure
+  - order_logic
+  - regime_logic
+  - liquidity_logic
+  - reflexivity_logic
+  - orochi_logic
+  - vmap_confirmation_logic
+
+fail_safe:
+  invalid_update: NO_TRADE
+  failed_tests: BLOCK
+  failed_validation: BLOCK
+  credential_detected: BLOCK
+
+production_deployment:
+  automatic_for_safe_dependency_updates: false
+  automatic_for_execution_or_risk_changes: false
+  rollback_required_for_deployment_failures: true
