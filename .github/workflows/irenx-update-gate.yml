@@ -1,0 +1,63 @@
+name: IRENX Update Gate
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  schedule:
+    - cron: "17 3 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: irenx-update-gate-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          lfs: true
+
+      - name: Validate repository policy
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f README.md
+          test -f .gitignore
+          test -f .env.example
+          test -f .github/workflows/copilot-setup-steps.yml
+          if git ls-files | grep -E '(^|/)(\.env|.*\.(pem|key|p12|pfx))$'; then
+            echo "Credential-like file tracked in repository."
+            exit 1
+          fi
+
+      - name: Run available Python tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -d tests ] && find tests -type f | grep -Eq '\.py$'; then
+            python -m pip install --upgrade pip
+            if [ -f requirements.txt ]; then python -m pip install -r requirements.txt; fi
+            python -m pytest -q
+          else
+            echo "No Python test suite detected; policy validation passed."
+          fi
+
+      - name: Risk/execution change gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            changed="$(git diff --name-only "${{ github.event.pull_request.base.sha }}" "${{ github.event.pull_request.head.sha }}")"
+            if printf '%s\n' "$changed" | grep -Eq '^(src/(execution|risk)/|config/(execution|risk)/)'; then
+              echo "Execution/risk code changed. Automatic production deployment is blocked. Human validation is required."
+              exit 1
+            fi
+          fi
