@@ -1,0 +1,31 @@
+name: IRENX Runner Health
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '*/15 * * * *'
+
+permissions:
+  contents: read
+
+jobs:
+  health:
+    runs-on: [self-hosted, irenx-prime]
+    timeout-minutes: 5
+    steps:
+      - name: Runner identity
+        shell: bash
+        run: |
+          echo "runner=${RUNNER_NAME}"
+          echo "os=${RUNNER_OS}"
+          echo "arch=${RUNNER_ARCH}"
+
+      - name: IRENX health check
+        shell: bash
+        run: |
+          set -e
+          echo "IRENX runner heartbeat: OK"
+          test -n "$RUNNER_NAME"
+          test -n "$RUNNER_OS"
+          test -n "$RUNNER_ARCH"
+          echo "status=healthy"
