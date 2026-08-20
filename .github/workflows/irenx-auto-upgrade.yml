@@ -1,0 +1,71 @@
+name: IRENX Automatic Upgrade Gate
+
+on:
+  schedule:
+    - cron: '17 2 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: irenx-auto-upgrade
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          lfs: true
+          fetch-depth: 0
+
+      - name: Validate repository safety policy
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f config/irenx-v0.2.yml
+          test -f src/core/contracts.md
+          test -f tests/test_irenx_contract.py
+          grep -q 'live: false' config/irenx-v0.2.yml
+          grep -q 'require_manual_live_approval: true' config/irenx-v0.2.yml
+          echo 'IRENX safety gate: PASS'
+
+      - name: Python syntax check
+        shell: bash
+        run: python -m py_compile tests/test_irenx_contract.py
+
+  dependency-audit:
+    needs: validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          lfs: true
+      - name: Repository audit
+        shell: bash
+        run: |
+          set -euo pipefail
+          if find . -type f \( -name '*.env' -o -name '*.pem' -o -name '*.key' \) -not -path './.git/*' | grep -q .; then
+            echo 'Potential secret material found in repository.'
+            exit 1
+          fi
+          echo 'Secret-file audit: PASS'
+
+  auto-upgrade-decision:
+    needs: [validate, dependency-audit]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Controlled upgrade policy
+        shell: bash
+        run: |
+          echo 'IRENX automatic upgrade gate: READY'
+          echo 'Safe maintenance may proceed through dependency tooling.'
+          echo 'Trading execution/risk changes remain blocked from automatic live promotion.'
